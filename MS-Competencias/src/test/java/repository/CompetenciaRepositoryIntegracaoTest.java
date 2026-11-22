@@ -162,4 +162,55 @@ class CompetenciaRepositoryIntegracaoTest {
                 resultado.get(0).getCompetencia().getNome()
         );
     }
+
+    @Test
+    void deveConsultarAssociacoesDeVariosCandidatosEmUmaOperacao() {
+
+        String cpf1 = "11111111111";
+        String cpf2 = "22222222222";
+        String sufixo = String.valueOf(System.nanoTime());
+
+        Competencia java = competenciaRepository.saveAndFlush(
+                new Competencia("JUnit Lote Java " + sufixo)
+        );
+
+        Competencia spring = competenciaRepository.saveAndFlush(
+                new Competencia("JUnit Lote Spring " + sufixo)
+        );
+
+        Competencia python = competenciaRepository.saveAndFlush(
+                new Competencia("JUnit Lote Python " + sufixo)
+        );
+
+        candidatoRepository.saveAllAndFlush(List.of(
+                new CandidatoCompetencia(cpf1, java),
+                new CandidatoCompetencia(cpf1, spring),
+                new CandidatoCompetencia(cpf2, python)
+        ));
+
+        List<CandidatoCompetencia> resultado =
+                candidatoRepository.buscarPorCpfsCandidatos(
+                        List.of(cpf1, cpf2)
+                );
+
+        assertEquals(3, resultado.size());
+
+        assertEquals(
+                List.of(cpf1, cpf1, cpf2),
+                resultado.stream()
+                        .map(CandidatoCompetencia::getCpfCandidato)
+                        .toList()
+        );
+
+        assertEquals(
+                List.of(
+                        "JUnit Lote Java " + sufixo,
+                        "JUnit Lote Spring " + sufixo,
+                        "JUnit Lote Python " + sufixo
+                ),
+                resultado.stream()
+                        .map(associacao -> associacao.getCompetencia().getNome())
+                        .toList()
+        );
+    }
 }
