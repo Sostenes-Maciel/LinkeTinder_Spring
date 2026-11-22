@@ -1,4 +1,4 @@
-package com.zg.acelera.msnucleo.service;
+package com.zg.acelera.msnucleo;
 
 import com.zg.acelera.msnucleo.model.Candidato;
 import com.zg.acelera.msnucleo.model.MatchVaga;

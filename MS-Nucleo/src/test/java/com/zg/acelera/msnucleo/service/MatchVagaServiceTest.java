@@ -2,6 +2,7 @@ package com.zg.acelera.msnucleo.service;
 
 import com.zg.acelera.msnucleo.model.*;
 import com.zg.acelera.msnucleo.repository.*;
+import com.zg.acelera.msnucleo.MatchVagaService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
