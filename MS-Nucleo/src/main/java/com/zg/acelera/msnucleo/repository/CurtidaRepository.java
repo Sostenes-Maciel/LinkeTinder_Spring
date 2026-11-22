@@ -4,6 +4,7 @@ import com.zg.acelera.msnucleo.model.Curtida;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface CurtidaRepository extends JpaRepository<Curtida, Long> {
 
@@ -21,6 +22,17 @@ public interface CurtidaRepository extends JpaRepository<Curtida, Long> {
 
     // Verifica se a empresa já curtiu o candidato para determinada vaga.
     boolean existsByCandidato_CpfAndEmpresa_CnpjAndVaga_IdVaga(
+            String cpf,
+            String cnpjEmpresa,
+            Long idVaga
+    );
+
+    Optional<Curtida> findByCandidato_CpfAndVaga_IdVagaAndEmpresaIsNull(
+            String cpf,
+            Long idVaga
+    );
+
+    Optional<Curtida> findByCandidato_CpfAndEmpresa_CnpjAndVaga_IdVaga(
             String cpf,
             String cnpjEmpresa,
             Long idVaga

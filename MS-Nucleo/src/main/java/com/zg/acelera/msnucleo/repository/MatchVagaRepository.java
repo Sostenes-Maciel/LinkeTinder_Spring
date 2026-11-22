@@ -23,4 +23,16 @@ public interface MatchVagaRepository extends JpaRepository<MatchVaga, Long> {
             Long idVaga,
             String cnpjEmpresa
     );
+
+    Optional<MatchVaga> findByCandidato_CpfAndVaga_Empresa_CnpjAndVaga_IdVaga(
+            String cpf,
+            String cnpjEmpresa,
+            Long idVaga
+    );
+
+    boolean existsByCandidato_CpfAndVaga_Empresa_CnpjAndVaga_IdVaga(
+            String cpf,
+            String cnpjEmpresa,
+            Long idVaga
+    );
 }

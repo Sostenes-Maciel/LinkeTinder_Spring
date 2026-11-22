@@ -94,4 +94,16 @@ public class Vaga {
     public Empresa getEmpresa() {
         return empresa;
     }
+
+    public void atualizarDados(
+            String titulo,
+            String pais,
+            String estado,
+            String descricao
+    ) {
+        this.titulo = titulo;
+        this.pais = pais;
+        this.estado = estado;
+        this.descricao = descricao;
+    }
 }
