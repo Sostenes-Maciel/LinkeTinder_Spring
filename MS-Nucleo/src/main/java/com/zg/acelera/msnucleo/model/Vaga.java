@@ -33,11 +33,18 @@ public class Vaga {
     @Column(name = "descricao", columnDefinition = "TEXT")
     private String descricao;
 
+    // Mapeamento direto da coluna que participa da chave composta.
+    @Column(name = "cnpj_empresa", nullable = false, length = 14)
+    private String cnpjEmpresa;
+
+    // Relacionamento somente para leitura da coluna cnpj_empresa.
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(
             name = "cnpj_empresa",
             referencedColumnName = "cnpj",
-            nullable = false
+            nullable = false,
+            insertable = false,
+            updatable = false
     )
     @OnDelete(action = OnDeleteAction.CASCADE)
     private Empresa empresa;
@@ -57,6 +64,7 @@ public class Vaga {
         this.estado = estado;
         this.descricao = descricao;
         this.empresa = empresa;
+        this.cnpjEmpresa = empresa.getCnpj();
     }
 
     public Long getIdVaga() {
@@ -77,6 +85,10 @@ public class Vaga {
 
     public String getDescricao() {
         return descricao;
+    }
+
+    public String getCnpjEmpresa() {
+        return cnpjEmpresa;
     }
 
     public Empresa getEmpresa() {
