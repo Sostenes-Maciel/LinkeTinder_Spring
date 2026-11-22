@@ -121,11 +121,12 @@ public class CandidatoCompetenciaService {
             );
         }
 
-        String cpfNormalizado = cpf.trim();
+        String cpfNormalizado = cpf.trim()
+                .replaceAll("[.\\-\\s]", "");
 
-        if (cpfNormalizado.length() > 14) {
+        if (!cpfNormalizado.matches("\\d{11}")) {
             throw new IllegalArgumentException(
-                    "O CPF informado possui tamanho inválido."
+                    "O CPF deve possuir exatamente 11 dígitos."
             );
         }
 
