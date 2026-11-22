@@ -22,4 +22,16 @@ public interface CandidatoCompetenciaRepository
     List<CandidatoCompetencia> buscarPorCpfCandidato(
             @Param("cpf") String cpf
     );
+
+    @Query("""
+            SELECT associacao
+            FROM CandidatoCompetencia associacao
+            JOIN FETCH associacao.competencia
+            WHERE associacao.id.cpfCandidato IN :cpfs
+            ORDER BY associacao.id.cpfCandidato,
+                     associacao.competencia.nome
+            """)
+    List<CandidatoCompetencia> buscarPorCpfsCandidatos(
+            @Param("cpfs") List<String> cpfs
+    );
 }

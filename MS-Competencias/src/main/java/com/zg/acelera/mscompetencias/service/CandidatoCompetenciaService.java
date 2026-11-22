@@ -11,6 +11,7 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,8 @@ import java.util.Map;
 @Service
 @Transactional(readOnly = true)
 public class CandidatoCompetenciaService {
+
+    private static final int LIMITE_CPFS_LOTE = 500;
 
     private final CandidatoCompetenciaRepository associacaoRepository;
     private final CompetenciaService competenciaService;
@@ -92,6 +95,58 @@ public class CandidatoCompetenciaService {
                         )
                 )
                 .toList();
+    }
+
+    public Map<String, List<CompetenciaResponse>> listarPorCandidatos(
+            List<String> cpfs
+    ) {
+
+        if (cpfs == null) {
+            throw new IllegalArgumentException(
+                    "A lista de CPFs deve ser informada."
+            );
+        }
+
+        if (cpfs.size() > LIMITE_CPFS_LOTE) {
+            throw new IllegalArgumentException(
+                    "A consulta em lote aceita no máximo "
+                            + LIMITE_CPFS_LOTE + " CPFs."
+            );
+        }
+
+        Map<String, List<CompetenciaResponse>> resultado =
+                new LinkedHashMap<>();
+
+        for (String cpf : cpfs) {
+            String cpfNormalizado = validarCpf(cpf);
+
+            resultado.putIfAbsent(
+                    cpfNormalizado,
+                    new ArrayList<>()
+            );
+        }
+
+        if (resultado.isEmpty()) {
+            return resultado;
+        }
+
+        List<CandidatoCompetencia> associacoes =
+                associacaoRepository.buscarPorCpfsCandidatos(
+                        new ArrayList<>(resultado.keySet())
+                );
+
+        for (CandidatoCompetencia associacao : associacoes) {
+
+            String cpf = associacao.getCpfCandidato();
+
+            resultado.get(cpf).add(
+                    CompetenciaResponse.from(
+                            associacao.getCompetencia()
+                    )
+            );
+        }
+
+        return resultado;
     }
 
     @Transactional
