@@ -1,11 +1,11 @@
 package com.zg.acelera.msnucleo.controller;
 
+import com.zg.acelera.msnucleo.dto.CadastroCandidatoRequestDTO;
+import com.zg.acelera.msnucleo.dto.MensagemResponseDTO;
 import com.zg.acelera.msnucleo.service.CandidatoService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/candidatos")
@@ -17,21 +17,9 @@ public class CandidatoController {
         this.candidatoService = candidatoService;
     }
 
-    public record CadastroCandidatoRequest(
-            String cpf,
-            String nome,
-            String email,
-            String pais,
-            String estado,
-            String cep,
-            String descricao,
-            Integer idade
-    ) {
-    }
-
     @PostMapping
-    public ResponseEntity<Map<String, String>> cadastrar(
-            @RequestBody CadastroCandidatoRequest dados
+    public ResponseEntity<MensagemResponseDTO> cadastrar(
+            @RequestBody CadastroCandidatoRequestDTO dados
     ) {
 
         candidatoService.cadastrar(
@@ -47,8 +35,7 @@ public class CandidatoController {
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(Map.of(
-                        "mensagem",
+                .body(new MensagemResponseDTO(
                         "Candidato cadastrado com sucesso."
                 ));
     }

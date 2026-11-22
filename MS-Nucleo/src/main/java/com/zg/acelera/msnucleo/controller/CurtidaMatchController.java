@@ -1,5 +1,7 @@
 package com.zg.acelera.msnucleo.controller;
 
+import com.zg.acelera.msnucleo.dto.CurtidaRequestDTO;
+import com.zg.acelera.msnucleo.dto.ResultadoCurtidaResponseDTO;
 import com.zg.acelera.msnucleo.model.MatchVaga;
 import com.zg.acelera.msnucleo.service.CurtidaService;
 import com.zg.acelera.msnucleo.service.MatchVagaService;
@@ -25,24 +27,9 @@ public class CurtidaMatchController {
         this.matchVagaService = matchVagaService;
     }
 
-    public record CurtidaRequest(
-            String autor,
-            String cpfCandidato,
-            String cnpjEmpresa,
-            Long idVaga
-    ) {
-    }
-
-    public record ResultadoCurtidaResponse(
-            String mensagem,
-            boolean match,
-            Long idMatch
-    ) {
-    }
-
     @PostMapping("/curtidas")
-    public ResponseEntity<ResultadoCurtidaResponse> registrarCurtida(
-            @RequestBody CurtidaRequest dados
+    public ResponseEntity<ResultadoCurtidaResponseDTO> registrarCurtida(
+            @RequestBody CurtidaRequestDTO dados
     ) {
 
         String autor = normalizarAutor(dados.autor());
@@ -75,13 +62,14 @@ public class CurtidaMatchController {
                 dados.idVaga()
         );
 
-        ResultadoCurtidaResponse resposta = new ResultadoCurtidaResponse(
-                match.isPresent()
-                        ? "Match encontrado com sucesso!"
-                        : "Curtida registrada com sucesso.",
-                match.isPresent(),
-                match.map(MatchVaga::getIdMatch).orElse(null)
-        );
+        ResultadoCurtidaResponseDTO resposta =
+                new ResultadoCurtidaResponseDTO(
+                        match.isPresent()
+                                ? "Match encontrado com sucesso!"
+                                : "Curtida registrada com sucesso.",
+                        match.isPresent(),
+                        match.map(MatchVaga::getIdMatch).orElse(null)
+                );
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -90,7 +78,7 @@ public class CurtidaMatchController {
 
     @DeleteMapping("/matches")
     public ResponseEntity<Void> removerCurtida(
-            @RequestBody CurtidaRequest dados
+            @RequestBody CurtidaRequestDTO dados
     ) {
 
         String autor = normalizarAutor(dados.autor());

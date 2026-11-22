@@ -1,5 +1,8 @@
 package com.zg.acelera.msnucleo.controller;
 
+import com.zg.acelera.msnucleo.dto.AtualizacaoVagaRequestDTO;
+import com.zg.acelera.msnucleo.dto.CadastroVagaRequestDTO;
+import com.zg.acelera.msnucleo.dto.VagaResponseDTO;
 import com.zg.acelera.msnucleo.model.Vaga;
 import com.zg.acelera.msnucleo.service.VagaService;
 import org.springframework.http.HttpStatus;
@@ -18,37 +21,10 @@ public class VagaController {
         this.vagaService = vagaService;
     }
 
-    public record CadastroVagaRequest(
-            String titulo,
-            String pais,
-            String estado,
-            String descricao,
-            String cnpjEmpresa
-    ) {
-    }
-
-    public record AtualizacaoVagaRequest(
-            String titulo,
-            String pais,
-            String estado,
-            String descricao
-    ) {
-    }
-
-    public record VagaResponse(
-            Long idVaga,
-            String titulo,
-            String pais,
-            String estado,
-            String descricao
-    ) {
-    }
-
-
     @GetMapping
-    public ResponseEntity<List<VagaResponse>> listarTodas() {
+    public ResponseEntity<List<VagaResponseDTO>> listarTodas() {
 
-        List<VagaResponse> vagas = vagaService.listarTodas()
+        List<VagaResponseDTO> vagas = vagaService.listarTodas()
                 .stream()
                 .map(this::paraResposta)
                 .toList();
@@ -56,9 +32,8 @@ public class VagaController {
         return ResponseEntity.ok(vagas);
     }
 
-
     @GetMapping("/{idVaga}")
-    public ResponseEntity<VagaResponse> buscarPorId(
+    public ResponseEntity<VagaResponseDTO> buscarPorId(
             @PathVariable Long idVaga
     ) {
 
@@ -67,13 +42,12 @@ public class VagaController {
         return ResponseEntity.ok(paraResposta(vaga));
     }
 
-
     @GetMapping("/empresa/{cnpj}")
-    public ResponseEntity<List<VagaResponse>> listarPorEmpresa(
+    public ResponseEntity<List<VagaResponseDTO>> listarPorEmpresa(
             @PathVariable String cnpj
     ) {
 
-        List<VagaResponse> vagas = vagaService.listarPorEmpresa(cnpj)
+        List<VagaResponseDTO> vagas = vagaService.listarPorEmpresa(cnpj)
                 .stream()
                 .map(this::paraResposta)
                 .toList();
@@ -81,10 +55,9 @@ public class VagaController {
         return ResponseEntity.ok(vagas);
     }
 
-
     @PostMapping
-    public ResponseEntity<VagaResponse> cadastrar(
-            @RequestBody CadastroVagaRequest dados
+    public ResponseEntity<VagaResponseDTO> cadastrar(
+            @RequestBody CadastroVagaRequestDTO dados
     ) {
 
         Vaga vaga = vagaService.cadastrar(
@@ -101,10 +74,10 @@ public class VagaController {
     }
 
     @PutMapping("/{idVaga}")
-    public ResponseEntity<VagaResponse> atualizar(
+    public ResponseEntity<VagaResponseDTO> atualizar(
             @PathVariable Long idVaga,
             @RequestParam String cnpjEmpresa,
-            @RequestBody AtualizacaoVagaRequest dados
+            @RequestBody AtualizacaoVagaRequestDTO dados
     ) {
 
         Vaga vaga = vagaService.atualizar(
@@ -130,9 +103,9 @@ public class VagaController {
         return ResponseEntity.noContent().build();
     }
 
-    private VagaResponse paraResposta(Vaga vaga) {
+    private VagaResponseDTO paraResposta(Vaga vaga) {
 
-        return new VagaResponse(
+        return new VagaResponseDTO(
                 vaga.getIdVaga(),
                 vaga.getTitulo(),
                 vaga.getPais(),
