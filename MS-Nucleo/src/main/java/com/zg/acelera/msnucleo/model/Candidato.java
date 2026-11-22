@@ -85,4 +85,22 @@ public class Candidato {
     public Integer getIdade() {
         return idade;
     }
+
+    public void atualizarDados(
+            String nome,
+            String email,
+            String pais,
+            String estado,
+            String cep,
+            String descricao,
+            Integer idade
+    ) {
+        this.nome = nome;
+        this.email = email;
+        this.pais = pais;
+        this.estado = estado;
+        this.cep = cep;
+        this.descricao = descricao;
+        this.idade = idade;
+    }
 }

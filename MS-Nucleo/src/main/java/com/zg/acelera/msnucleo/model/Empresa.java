@@ -76,4 +76,20 @@ public class Empresa {
     public String getDescricao() {
         return descricao;
     }
+
+    public void atualizarDados(
+            String nome,
+            String email,
+            String pais,
+            String estado,
+            String cep,
+            String descricao
+    ) {
+        this.nome = nome;
+        this.email = email;
+        this.pais = pais;
+        this.estado = estado;
+        this.cep = cep;
+        this.descricao = descricao;
+    }
 }
