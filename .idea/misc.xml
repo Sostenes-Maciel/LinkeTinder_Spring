@@ -5,6 +5,7 @@
     <file type="web" url="file://$PROJECT_DIR$/Backend" />
     <file type="web" url="file://$PROJECT_DIR$/CadastroMicroService" />
     <file type="web" url="file://$PROJECT_DIR$/MS-Competencias" />
+    <file type="web" url="file://$PROJECT_DIR$/MS-Nucleo" />
   </component>
   <component name="KubernetesApiProvider"><![CDATA[{}]]></component>
   <component name="ProjectRootManager" version="2" languageLevel="JDK_21" default="true" project-jdk-name="zulu-21" project-jdk-type="JavaSDK">
