@@ -2,7 +2,6 @@ package com.zg.acelera.msnucleo.service;
 
 import com.zg.acelera.msnucleo.model.Candidato;
 import com.zg.acelera.msnucleo.repository.CandidatoRepository;
-import com.zg.acelera.msnucleo.CandidatoService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

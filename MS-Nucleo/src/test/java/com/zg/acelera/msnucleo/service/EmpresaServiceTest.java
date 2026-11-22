@@ -2,7 +2,6 @@ package com.zg.acelera.msnucleo.service;
 
 import com.zg.acelera.msnucleo.model.Empresa;
 import com.zg.acelera.msnucleo.repository.EmpresaRepository;
-import com.zg.acelera.msnucleo.EmpresaService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

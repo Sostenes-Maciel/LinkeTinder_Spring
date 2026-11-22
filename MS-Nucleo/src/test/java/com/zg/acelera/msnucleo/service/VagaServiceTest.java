@@ -4,7 +4,6 @@ import com.zg.acelera.msnucleo.model.Empresa;
 import com.zg.acelera.msnucleo.model.Vaga;
 import com.zg.acelera.msnucleo.repository.EmpresaRepository;
 import com.zg.acelera.msnucleo.repository.VagaRepository;
-import com.zg.acelera.msnucleo.VagaService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

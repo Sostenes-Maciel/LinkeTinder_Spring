@@ -1,4 +1,4 @@
-package com.zg.acelera.msnucleo;
+package com.zg.acelera.msnucleo.service;
 
 import com.zg.acelera.msnucleo.model.Empresa;
 import com.zg.acelera.msnucleo.repository.EmpresaRepository;
