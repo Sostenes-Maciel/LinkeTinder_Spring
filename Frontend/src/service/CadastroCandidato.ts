@@ -274,12 +274,14 @@ async function processarSubmissao(formulario: HTMLFormElement, validarCep: () =>
             ? 'http://localhost:8080/api/candidatos'
             : 'http://localhost:8081/api/candidatos'
 
+        const { competencias: _competencias, ...dadosSemCompetencias } = candidato;
+
         const resposta = await fetch(url, {
             method: candidatoEmEdicao ? 'PUT' : 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(candidato)
+            body: JSON.stringify(dadosSemCompetencias)
         });
 
         if (resposta.status === (candidatoEmEdicao ? 200 : 201)) {

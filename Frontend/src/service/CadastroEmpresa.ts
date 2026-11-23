@@ -260,12 +260,14 @@ async function processarSubmissao(formulario: HTMLFormElement, validarCep: () =>
 
         const url = 'http://localhost:8081/api/empresas'
 
+        const { competencias: _competencias, ...dadosSemCompetencias } = empresa;
+
         const resposta = await fetch(url, {
             method: empresaEmEdicao ? 'PUT' : 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(empresa)
+            body: JSON.stringify(dadosSemCompetencias)
         });
 
         if (resposta.status === (empresaEmEdicao ? 200 : 201)) {
@@ -276,6 +278,30 @@ async function processarSubmissao(formulario: HTMLFormElement, validarCep: () =>
                 await renderPerfilEmpresa(empresa)
                 mostrarNotificacaoSucesso('Usuário editado com sucesso!')
             } else {
+                const cnpjLimpo = empresa.cnpj.replace(/\D/g, '')
+
+                const respostaCompetencias = await fetch(
+                    `http://localhost:8082/api/empresas/${encodeURIComponent(cnpjLimpo)}/competencias`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            competencias: empresa.competencias
+                        })
+                    }
+                )
+
+                if (!respostaCompetencias.ok) {
+                    exibirMensagem(
+                        mensagem,
+                        'Empresa cadastrada, mas não foi possível associar as competências.',
+                        'mensagem-erro'
+                    )
+                    return
+                }
+
                 exibirMensagem(mensagem, 'Empresa cadastrada com sucesso!', 'mensagem-sucesso')
                 formulario.reset()
             }
