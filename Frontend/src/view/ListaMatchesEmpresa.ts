@@ -1,25 +1,80 @@
-import type { Empresa } from '../model/Empresa'
-import type { Match } from '../model/Match'
-import type { Curtida } from '../model/Curtida'
+interface CandidatoResumo {
+    cpf?: string
+    nome?: string
+    sobrenome?: string
+}
 
-export async function renderListaMatchesEmpresa(empresa: Empresa): Promise<void> {
-    const app = document.querySelector<HTMLDivElement>('#app')
+interface VagaResumo {
+    id?: number
+    idVaga?: number
+    titulo?: string
+    pais?: string
+    estado?: string
+}
+
+interface RecrutadorResumo {
+    nome?: string
+}
+
+interface MatchEmpresa {
+    idMatch?: number
+    candidato?: CandidatoResumo
+    vaga?: VagaResumo
+}
+
+interface CurtidaPendenteEmpresa {
+    candidato?: CandidatoResumo
+    vaga?: VagaResumo
+    recrutador?: RecrutadorResumo
+}
+
+interface RespostaMatches {
+    matches?: MatchEmpresa[]
+    curtidasPendentes?: CurtidaPendenteEmpresa[]
+    dados?: RespostaMatches
+}
+
+const API_NUCLEO = "http://localhost:8081"
+
+export async function renderListaMatchesEmpresa(
+    empresa: { cnpj: string }
+): Promise<void> {
+    const app = document.querySelector<HTMLDivElement>("#app")
     if (!app) return
 
-    app.innerHTML = `<section class="lista-matches tela-com-transicao"><h2>Carregando matches...</h2></section>`
+    app.innerHTML = `
+        <section class="lista-matches tela-com-transicao">
+            <h2>Carregando matches...</h2>
+        </section>
+    `
 
     try {
-        const cnpjLimpo = empresa.cnpj.replace(/\D/g, '')
-        const resposta = await fetch(`http://localhost:8080/api/matches?cnpj=${cnpjLimpo}&completo=true`)
+        const cnpjLimpo = empresa.cnpj.replace(/\D/g, "")
 
-        let matches: Match[] = []
-        let curtidasPendentes: Curtida[] = []
-
-        if (resposta.ok) {
-            const dados = await resposta.json()
-            matches = dados.matches || []
-            curtidasPendentes = dados.curtidasPendentes || []
+        if (!/^\d{14}$/.test(cnpjLimpo)) {
+            throw new Error("CNPJ inválido. Faça login novamente.")
         }
+
+        const resposta = await fetch(
+            `${API_NUCLEO}/api/matches?cnpj=${encodeURIComponent(cnpjLimpo)}&completo=true`
+        )
+
+        if (!resposta.ok) {
+            throw new Error(
+                `Falha ao consultar Matches (HTTP ${resposta.status}).`
+            )
+        }
+
+        const resultado: RespostaMatches = await resposta.json()
+        const dados = resultado.dados ?? resultado
+
+        const matches = Array.isArray(dados.matches)
+            ? dados.matches
+            : []
+
+        const curtidasPendentes = Array.isArray(dados.curtidasPendentes)
+            ? dados.curtidasPendentes
+            : []
 
         app.innerHTML = `
             <section class="lista-matches tela-com-transicao">
@@ -32,23 +87,43 @@ export async function renderListaMatchesEmpresa(empresa: Empresa): Promise<void>
                 ${gerarSecaoMatchesRealizados(matches)}
             </section>
         `
+
     } catch (erro) {
-        console.error("Erro ao buscar matches completos da empresa:", erro)
+        console.error(
+            "Erro ao buscar Matches completos da empresa:",
+            erro
+        )
+
         app.innerHTML = `
-            <section class="lista-matches">
-                <h2>Erro ao conectar com o servidor.</h2>
+            <section class="lista-matches tela-com-transicao">
+                <h2>Não foi possível carregar os Matches da empresa.</h2>
+
+                <p>
+                    ${escaparHtml(
+            erro instanceof Error
+                ? erro.message
+                : "Verifique a conexão com o servidor."
+        )}
+                </p>
             </section>
         `
     }
 }
 
-function gerarSecaoCurtidasPendentes(curtidas: Curtida[]): string {
-    if (!Array.isArray(curtidas) || curtidas.length === 0) {
+function gerarSecaoCurtidasPendentes(
+    curtidas: CurtidaPendenteEmpresa[]
+): string {
+    if (curtidas.length === 0) {
         return `
             <div class="estado-vazio">
                 <span class="estado-vazio-icone">♥</span>
+
                 <h3>Nenhuma curtida aguardando Match</h3>
-                <p>Os candidatos que demonstrarem interesse e ainda não tiverem reciprocidade aparecerão aqui.</p>
+
+                <p>
+                    Os candidatos que demonstrarem interesse e ainda
+                    não tiverem reciprocidade aparecerão aqui.
+                </p>
             </div>
         `
     }
@@ -56,54 +131,90 @@ function gerarSecaoCurtidasPendentes(curtidas: Curtida[]): string {
     const cardsHtml = curtidas.map(curtida => `
         <div class="card-match card-curtida-pendente">
             <h3>♥ Curtida pendente</h3>
-            ${curtida.vaga?.titulo ? `<p><strong>Vaga:</strong> ${curtida.vaga.titulo}</p>` : ''}
+
+            ${
+        curtida.vaga?.titulo
+            ? `
+                        <p>
+                            <strong>Vaga:</strong>
+                            ${escaparHtml(curtida.vaga.titulo)}
+                        </p>
+                    `
+            : ""
+    }
+
             <p>
-                <strong>Candidato:</strong> ${curtida.candidato?.nome ?? 'Match necessário para visualização'}
+                <strong>Candidato:</strong>
+                Match necessário para visualização
             </p>
+
             <p>
-                <strong>Recrutador:</strong> ${escaparHtml(curtida.recrutador?.nome ?? 'Não identificado')}
+                <strong>Recrutador:</strong>
+                ${escaparHtml(
+        curtida.recrutador?.nome ?? "Não identificado"
+    )}
             </p>
         </div>
-    `).join('')
+    `).join("")
 
     return `<div class="cards-matches">${cardsHtml}</div>`
 }
 
-function gerarSecaoMatchesRealizados(matches: Match[]): string {
-    if (!Array.isArray(matches) || matches.length === 0) {
+function gerarSecaoMatchesRealizados(
+    matches: MatchEmpresa[]
+): string {
+    if (matches.length === 0) {
         return `
             <div class="estado-vazio">
                 <span class="estado-vazio-icone">🤝</span>
+
                 <h3>Nenhum Match ainda</h3>
-                <p>Quando um candidato demonstrar interesse recíproco, o Match aparecerá aqui.</p>
+
+                <p>
+                    Quando um candidato demonstrar interesse recíproco,
+                    o Match aparecerá aqui.
+                </p>
             </div>
         `
     }
 
     const cardsHtml = matches.map(match => `
         <div class="card-match card-match-confirmado">
-            <h3>🤝 ${match.candidato?.nome ?? 'Candidato'}</h3>
+            <h3>
+                🤝 ${
+        escaparHtml(
+            [
+                match.candidato?.nome,
+                match.candidato?.sobrenome
+            ].filter(Boolean).join(" ")
+            || "Candidato"
+        )
+    }
+            </h3>
+
             <p>
-                <strong>Vaga:</strong> ${match.vaga?.titulo ?? 'Vaga'}
+                <strong>Vaga:</strong>
+                ${escaparHtml(match.vaga?.titulo ?? "Vaga")}
             </p>
+
             <p>
-                <strong>Local:</strong> ${match.vaga?.pais ?? ''} - ${match.vaga?.estado ?? ''}
-            </p>
-            <p>
-                <strong>Recrutador:</strong> ${escaparHtml(match.recrutador?.nome ?? 'Não identificado')}
+                <strong>Local:</strong>
+                ${escaparHtml(match.vaga?.pais ?? "")}
+                -
+                ${escaparHtml(match.vaga?.estado ?? "")}
             </p>
         </div>
-    `).join('')
+    `).join("")
 
     return `<div class="cards-matches">${cardsHtml}</div>`
 }
 
 function escaparHtml(valor: string): string {
     return valor.replace(/[&<>"']/g, caractere => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
     })[caractere]!)
 }
