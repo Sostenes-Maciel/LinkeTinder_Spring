@@ -53,4 +53,13 @@ public class CandidatoCompetenciaController {
 
         return ResponseEntity.noContent().build();
     }
+
+    @DeleteMapping
+    public ResponseEntity<Void> removerTodas(
+            @PathVariable String cpf
+    ) {
+        associacaoService.removerTodasPorCandidato(cpf);
+
+        return ResponseEntity.noContent().build();
+    }
 }

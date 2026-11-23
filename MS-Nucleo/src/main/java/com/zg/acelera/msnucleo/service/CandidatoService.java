@@ -1,8 +1,11 @@
 package com.zg.acelera.msnucleo.service;
 
+import com.zg.acelera.msnucleo.client.CompetenciasClient;
 import com.zg.acelera.msnucleo.model.Candidato;
 import com.zg.acelera.msnucleo.repository.CandidatoRepository;
+
 import jakarta.persistence.EntityNotFoundException;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,9 +16,14 @@ import java.util.List;
 public class CandidatoService {
 
     private final CandidatoRepository candidatoRepository;
+    private final CompetenciasClient competenciasClient;
 
-    public CandidatoService(CandidatoRepository candidatoRepository) {
+    public CandidatoService(
+            CandidatoRepository candidatoRepository,
+            CompetenciasClient competenciasClient
+    ) {
         this.candidatoRepository = candidatoRepository;
+        this.competenciasClient = competenciasClient;
     }
 
     public List<Candidato> listarTodos() {
@@ -115,6 +123,9 @@ public class CandidatoService {
     @Transactional
     public void excluir(String cpf) {
         Candidato candidato = buscarPorCpf(cpf);
+
+        competenciasClient.removerTodasDoCandidato(candidato.getCpf());
+
         candidatoRepository.delete(candidato);
     }
 

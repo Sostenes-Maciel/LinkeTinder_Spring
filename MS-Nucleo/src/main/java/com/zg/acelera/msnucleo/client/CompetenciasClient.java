@@ -112,6 +112,13 @@ public class CompetenciasClient {
                 .toBodilessEntity();
     }
 
+    public void removerTodasDoCandidato(String cpf) {
+        restClient.delete()
+                .uri("/api/candidatos/{cpf}/competencias", cpf)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
     public List<CompetenciaResponseDTO> listarPorEmpresa(String cnpj) {
         return obterLista(
                 "/api/empresas/{cnpj}/competencias",
@@ -141,6 +148,13 @@ public class CompetenciasClient {
                         cnpj,
                         idCompetencia
                 )
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    public void removerTodasDaEmpresa(String cnpj) {
+        restClient.delete()
+                .uri("/api/empresas/{cnpj}/competencias", cnpj)
                 .retrieve()
                 .toBodilessEntity();
     }

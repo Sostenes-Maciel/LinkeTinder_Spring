@@ -168,6 +168,17 @@ public class CandidatoCompetenciaService {
         associacaoRepository.deleteById(id);
     }
 
+    @Transactional
+    public void removerTodasPorCandidato(String cpf) {
+
+        String cpfNormalizado = validarCpf(cpf);
+
+        List<CandidatoCompetencia> associacoes =
+                associacaoRepository.buscarPorCpfCandidato(cpfNormalizado);
+
+        associacaoRepository.deleteAll(associacoes);
+    }
+
     private String validarCpf(String cpf) {
 
         if (cpf == null || cpf.isBlank()) {

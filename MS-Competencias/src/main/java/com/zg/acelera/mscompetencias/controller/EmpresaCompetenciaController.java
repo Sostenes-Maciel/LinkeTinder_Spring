@@ -60,4 +60,13 @@ public class EmpresaCompetenciaController {
 
         return ResponseEntity.noContent().build();
     }
+
+    @DeleteMapping
+    public ResponseEntity<Void> removerTodas(
+            @PathVariable String cnpj
+    ) {
+        associacaoService.removerTodasPorEmpresa(cnpj);
+
+        return ResponseEntity.noContent().build();
+    }
 }

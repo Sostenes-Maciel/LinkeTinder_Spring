@@ -116,6 +116,17 @@ public class EmpresaCompetenciaService {
         associacaoRepository.deleteById(id);
     }
 
+    @Transactional
+    public void removerTodasPorEmpresa(String cnpj) {
+
+        String cnpjNormalizado = validarCnpj(cnpj);
+
+        List<EmpresaCompetencia> associacoes =
+                associacaoRepository.buscarPorCnpjEmpresa(cnpjNormalizado);
+
+        associacaoRepository.deleteAll(associacoes);
+    }
+
     private String validarCnpj(String cnpj) {
 
         if (cnpj == null || cnpj.isBlank()) {
