@@ -141,7 +141,7 @@ async function processarLogin(formulario: HTMLFormElement): Promise<void> {
         window.dispatchEvent(new Event('auth-change'))
 
         if (tipoUsuario === 'candidato') {
-            renderPerfilCandidato(usuarioAutenticado as Candidato)
+            await renderPerfilCandidato(usuarioAutenticado as Candidato)
         } else {
             await renderPerfilEmpresa(usuarioAutenticado as Empresa)
         }

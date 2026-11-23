@@ -247,7 +247,7 @@ async function abrirPerfil(cpf?: string): Promise<void> {
             competenciasPorCpf[cpfLimpo] ?? []
         )
 
-        renderPerfilCandidato(candidato)
+        await renderPerfilCandidato(candidato)
 
     } catch (erro) {
         console.error("Erro ao abrir perfil do candidato:", erro)

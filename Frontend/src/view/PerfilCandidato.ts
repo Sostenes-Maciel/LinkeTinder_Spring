@@ -1,12 +1,56 @@
 import type { Candidato } from '../model/Candidato'
 import { consultarEnderecoPorCep, formatarEndereco } from '../service/ConsultaCep.ts'
 
-export function renderPerfilCandidato(candidato: Candidato): void {
+const API_COMPETENCIAS = 'http://localhost:8082'
+
+export async function renderPerfilCandidato(candidato: Candidato): Promise<void> {
     const app = document.querySelector<HTMLDivElement>('#app')
     if (!app) return
 
-    renderizarTemplatePerfil(app, candidato)
+    const competencias = await buscarCompetenciasDoCandidato(candidato.cpf)
+
+    const candidatoComCompetencias: Candidato = {
+        ...candidato,
+        competencias
+    }
+
+    renderizarTemplatePerfil(app, candidatoComCompetencias)
     void preencherEnderecoPerfil(candidato.cep)
+}
+
+async function buscarCompetenciasDoCandidato(cpf: string): Promise<string[]> {
+    const cpfLimpo = cpf.replace(/\D/g, '')
+
+    try {
+        const resposta = await fetch(
+            `${API_COMPETENCIAS}/api/candidatos/${encodeURIComponent(cpfLimpo)}/competencias`
+        )
+
+        if (!resposta.ok) {
+            return []
+        }
+
+        const dados: unknown = await resposta.json()
+
+        if (Array.isArray(dados)) {
+            return dados
+                .map(item => {
+                    if (typeof item === 'string') {
+                        return item.trim()
+                    }
+                    if (item && typeof item === 'object' && 'nome' in item) {
+                        return String((item as { nome: unknown }).nome).trim()
+                    }
+                    return ''
+                })
+                .filter(nome => nome.length > 0)
+        }
+
+        return []
+    } catch (erro) {
+        console.error('Erro ao buscar competências do candidato:', erro)
+        return []
+    }
 }
 
 function renderizarTemplatePerfil(app: HTMLDivElement, candidato: Candidato): void {

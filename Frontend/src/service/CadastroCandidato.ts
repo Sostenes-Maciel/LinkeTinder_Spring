@@ -287,9 +287,33 @@ async function processarSubmissao(formulario: HTMLFormElement, validarCep: () =>
                 localStorage.setItem('usuarioLogado', JSON.stringify(candidato))
                 window.dispatchEvent(new Event('auth-change'))
                 const { renderPerfilCandidato } = await import('../view/PerfilCandidato.ts')
-                renderPerfilCandidato(candidato)
+                await renderPerfilCandidato(candidato)
                 mostrarNotificacaoSucesso('Usuário editado com sucesso!')
             } else {
+                const cpfLimpo = candidato.cpf.replace(/\D/g, '')
+
+                const respostaCompetencias = await fetch(
+                    `http://localhost:8082/api/candidatos/${encodeURIComponent(cpfLimpo)}/competencias`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            competencias: candidato.competencias
+                        })
+                    }
+                )
+
+                if (!respostaCompetencias.ok) {
+                    exibirMensagem(
+                        mensagem,
+                        'Candidato cadastrado, mas não foi possível associar as competências.',
+                        'mensagem-erro'
+                    )
+                    return
+                }
+
                 exibirMensagem(mensagem, 'Candidato cadastrado com sucesso!', 'mensagem-sucesso')
                 formulario.reset()
             }

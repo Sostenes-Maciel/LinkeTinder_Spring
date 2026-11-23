@@ -337,7 +337,7 @@ async function executarAcaoMenu(acao: string): Promise<void> {
     switch (acao) {
         case 'perfil':
             if (sessao.tipo === 'candidato') {
-                renderPerfilCandidato(sessao.usuario)
+                await renderPerfilCandidato(sessao.usuario)
             } else if (sessao.tipo === 'empresa') {
                 await renderPerfilEmpresa(sessao.usuario)
             } else {
