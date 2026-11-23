@@ -7,23 +7,88 @@ import {
     getStatesOfCountry
 } from '@countrystatecity/countries-browser'
 
+const URL_MS_NUCLEO = 'http://localhost:8081'
+const URL_MS_COMPETENCIAS = 'http://localhost:8082'
+
+interface CompetenciaAssociada {
+    idCompetencia: number
+    nome: string
+}
+
 export async function renderCadastroCandidato(candidatoEmEdicao?: Candidato): Promise<void> {
     const app = document.querySelector<HTMLDivElement>('#app')
     if (!app) return
 
-    renderizarFormulario(app, candidatoEmEdicao !== undefined)
-    await configurarSelectsLocalizacao()
+    let candidatoParaEdicao = candidatoEmEdicao
+
+    // Busca as competências no MS-Competências antes de abrir a edição.
     if (candidatoEmEdicao) {
-        await preencherFormularioEdicao(candidatoEmEdicao)
+        app.innerHTML = `
+            <section class="cadastro-container">
+                <p>Carregando dados e competências do candidato...</p>
+            </section>
+        `
+
+        try {
+            const competencias = await buscarCompetenciasCandidato(
+                candidatoEmEdicao.cpf
+            )
+
+            candidatoParaEdicao = {
+                ...candidatoEmEdicao,
+                competencias
+            }
+
+        } catch (erro) {
+            console.error(
+                'Erro ao carregar competências do candidato:',
+                erro
+            )
+
+            app.innerHTML = ''
+
+            const mensagem = document.createElement('p')
+            mensagem.className = 'mensagem-erro'
+            mensagem.textContent = erro instanceof Error
+                ? erro.message
+                : 'Não foi possível carregar as competências do candidato.'
+
+            app.appendChild(mensagem)
+            return
+        }
     }
-    configurarEventosFormulario(configurarBuscaCep(), candidatoEmEdicao)
+
+    renderizarFormulario(
+        app,
+        candidatoParaEdicao !== undefined
+    )
+
+    await configurarSelectsLocalizacao()
+
+    if (candidatoParaEdicao) {
+        await preencherFormularioEdicao(candidatoParaEdicao)
+    }
+
+    configurarEventosFormulario(
+        configurarBuscaCep(),
+        candidatoParaEdicao
+    )
 }
 
-function renderizarFormulario(app: HTMLDivElement, modoEdicao: boolean): void {
+function renderizarFormulario(
+    app: HTMLDivElement,
+    modoEdicao: boolean
+): void {
+
     app.innerHTML = `
         <section class="cadastro-container tela-com-transicao">
             <h1>${modoEdicao ? 'Editar perfil de candidato' : 'Cadastro de Candidato'}</h1>
-            <p class="form-descricao">${modoEdicao ? 'Atualize seus dados de perfil.' : 'Crie seu perfil e encontre oportunidades alinhadas às suas competências.'}</p>
+            <p class="form-descricao">
+                ${modoEdicao
+        ? 'Atualize seus dados de perfil.'
+        : 'Crie seu perfil e encontre oportunidades alinhadas às suas competências.'}
+            </p>
+
             <form id="form-candidato" data-modo-edicao="${modoEdicao}">
                 <div>
                     <label for="nome">Nome</label>
@@ -95,39 +160,66 @@ function renderizarFormulario(app: HTMLDivElement, modoEdicao: boolean): void {
 
                 <div>
                     <label for="competencias">Competências</label>
-                    <input type="text" id="competencias" name="competencias" placeholder="Ex.: Java, Python, Groovy" required>
+                    <input
+                        type="text"
+                        id="competencias"
+                        name="competencias"
+                        placeholder="Ex.: Java, Python, Groovy"
+                        required
+                    >
                     <p id="erro-competencias" class="erro-campo"></p>
                 </div>
 
-                <button type="submit">${modoEdicao ? 'Salvar alterações' : 'Cadastrar'}</button>
+                <button type="submit">
+                    ${modoEdicao ? 'Salvar alterações' : 'Cadastrar'}
+                </button>
+
                 <p id="mensagem"></p>
             </form>
         </section>
     `
 }
 
-async function preencherFormularioEdicao(candidato: Candidato): Promise<void> {
+async function preencherFormularioEdicao(
+    candidato: Candidato
+): Promise<void> {
+
     const pais = document.querySelector<HTMLSelectElement>('#pais')
     const estado = document.querySelector<HTMLSelectElement>('#estado')
     const codigoPostal = document.querySelector<HTMLInputElement>('#codigoPostal')
     const formulario = document.querySelector<HTMLFormElement>('#form-candidato')
+
     if (!pais || !estado || !codigoPostal || !formulario) return
 
     formulario.querySelector<HTMLInputElement>('#nome')!.value = candidato.nome
     formulario.querySelector<HTMLInputElement>('#email')!.value = candidato.email
     formulario.querySelector<HTMLInputElement>('#idade')!.value = String(candidato.idade)
+
     const campoCpf = formulario.querySelector<HTMLInputElement>('#cpf')!
     campoCpf.value = candidato.cpf
     campoCpf.readOnly = true
-    codigoPostal.value = candidato.cep
-    formulario.querySelector<HTMLTextAreaElement>('#descricao')!.value = candidato.descricao
-    formulario.querySelector<HTMLInputElement>('#competencias')!.value = candidato.competencias.join(', ')
 
-    const opcaoPais = Array.from(pais.options).find(opcao => opcao.textContent?.trim() === candidato.pais)
+    codigoPostal.value = candidato.cep
+
+    formulario.querySelector<HTMLTextAreaElement>('#descricao')!.value =
+        candidato.descricao
+
+    const competencias = Array.isArray(candidato.competencias)
+        ? candidato.competencias
+        : []
+
+    formulario.querySelector<HTMLInputElement>('#competencias')!.value =
+        competencias.join(', ')
+
+    const opcaoPais = Array.from(pais.options).find(
+        opcao => opcao.textContent?.trim() === candidato.pais
+    )
+
     if (opcaoPais) {
         pais.value = opcaoPais.value
         await atualizarEstadosPorPais(pais.value, estado)
     }
+
     estado.value = candidato.estado
 }
 
@@ -139,29 +231,41 @@ async function configurarSelectsLocalizacao(): Promise<void> {
 
     try {
         const paises = await getCountries()
+
         paises.forEach(pais => {
             const option = document.createElement('option')
             option.value = pais.iso2
             option.textContent = pais.name
             selectPais.appendChild(option)
         })
+
     } catch (erro) {
         console.error('Erro ao carregar países:', erro)
     }
 
     selectPais.addEventListener('change', async () => {
-        await atualizarEstadosPorPais(selectPais.value, selectEstado)
+        await atualizarEstadosPorPais(
+            selectPais.value,
+            selectEstado
+        )
     })
 }
 
-async function atualizarEstadosPorPais(codigoPais: string, selectEstado: HTMLSelectElement): Promise<void> {
-    selectEstado.innerHTML = '<option value="">Selecione um estado</option>'
+async function atualizarEstadosPorPais(
+    codigoPais: string,
+    selectEstado: HTMLSelectElement
+): Promise<void> {
+
+    selectEstado.innerHTML =
+        '<option value="">Selecione um estado</option>'
+
     selectEstado.disabled = true
 
     if (!codigoPais) return
 
     try {
         const estados = await getStatesOfCountry(codigoPais)
+
         estados.forEach(estado => {
             const option = document.createElement('option')
             option.value = estado.iso2
@@ -169,7 +273,9 @@ async function atualizarEstadosPorPais(codigoPais: string, selectEstado: HTMLSel
             option.dataset.uf = estado.iso2
             selectEstado.appendChild(option)
         })
+
         selectEstado.disabled = false
+
     } catch (erro) {
         console.error('Erro ao carregar estados:', erro)
     }
@@ -184,7 +290,15 @@ function configurarBuscaCep(): () => Promise<void> {
     const campoCidade = document.querySelector<HTMLInputElement>('#cidade')
     const mensagemCep = document.querySelector<HTMLParagraphElement>('#mensagem-cep')
 
-    if (!campoCep || !campoPais || !campoEstado || !campoLogradouro || !campoBairro || !campoCidade || !mensagemCep) {
+    if (
+        !campoCep ||
+        !campoPais ||
+        !campoEstado ||
+        !campoLogradouro ||
+        !campoBairro ||
+        !campoCidade ||
+        !mensagemCep
+    ) {
         return async () => undefined
     }
 
@@ -203,61 +317,121 @@ function configurarBuscaCep(): () => Promise<void> {
     )
 }
 
-function configurarEventosFormulario(validarCep: () => Promise<void>, candidatoEmEdicao?: Candidato): void {
+function configurarEventosFormulario(
+    validarCep: () => Promise<void>,
+    candidatoEmEdicao?: Candidato
+): void {
+
     const formulario = document.querySelector<HTMLFormElement>('#form-candidato')
-    formulario?.addEventListener('submit', async (evento) => {
+
+    formulario?.addEventListener('submit', async evento => {
         evento.preventDefault()
-        await processarSubmissao(formulario, validarCep, candidatoEmEdicao)
+
+        await processarSubmissao(
+            formulario,
+            validarCep,
+            candidatoEmEdicao
+        )
     })
 
-    // Validação em tempo real: ao sair do campo (blur) e ao digitar (input)
-    // CEP, País e Estado são gerenciados pelo auto-completar dos Correios e biblioteca de países
-    configurarValidacaoPorCampo('nome', (valor) => ValidarCandidato.validarNome(valor))
-    configurarValidacaoPorCampo('email', (valor) => ValidarCandidato.validarEmail(valor))
-    configurarValidacaoPorCampo('idade', (valor) => ValidarCandidato.validarIdade(Number(valor)))
-    configurarValidacaoPorCampo('cpf', (valor) => ValidarCandidato.validarCpf(valor))
-    configurarValidacaoPorCampo('descricao', (valor) => ValidarCandidato.validarDescricao(valor))
-    configurarValidacaoPorCampo('competencias', (valor) => {
-        const competencias = valor.split(',').map(c => c.trim()).filter(c => c.length > 0)
+    configurarValidacaoPorCampo(
+        'nome',
+        valor => ValidarCandidato.validarNome(valor)
+    )
+
+    configurarValidacaoPorCampo(
+        'email',
+        valor => ValidarCandidato.validarEmail(valor)
+    )
+
+    configurarValidacaoPorCampo(
+        'idade',
+        valor => ValidarCandidato.validarIdade(Number(valor))
+    )
+
+    configurarValidacaoPorCampo(
+        'cpf',
+        valor => ValidarCandidato.validarCpf(valor)
+    )
+
+    configurarValidacaoPorCampo(
+        'descricao',
+        valor => ValidarCandidato.validarDescricao(valor)
+    )
+
+    configurarValidacaoPorCampo('competencias', valor => {
+        const competencias = valor
+            .split(',')
+            .map(c => c.trim())
+            .filter(c => c.length > 0)
+
         ValidarCandidato.validarCompetencias(competencias)
     })
 }
 
-function configurarValidacaoPorCampo(campoId: string, validar: (valor: string) => void): void {
-    const campo = document.getElementById(campoId) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null
-    const erro = document.getElementById(`erro-${campoId}`) as HTMLParagraphElement | null
+function configurarValidacaoPorCampo(
+    campoId: string,
+    validar: (valor: string) => void
+): void {
+
+    const campo = document.getElementById(campoId) as
+        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null
+
+    const erro = document.getElementById(
+        `erro-${campoId}`
+    ) as HTMLParagraphElement | null
 
     if (!campo || !erro) return
 
-    // Ao sair do campo: validar
     campo.addEventListener('blur', () => {
         limparErroCampo(campo, erro)
+
         try {
             validar(campo.value)
+
         } catch (erroValidacao) {
-            mostrarErroCampo(campo, erro, erroValidacao instanceof Error ? erroValidacao.message : 'Campo inválido.')
+            mostrarErroCampo(
+                campo,
+                erro,
+                erroValidacao instanceof Error
+                    ? erroValidacao.message
+                    : 'Campo inválido.'
+            )
         }
     })
 
-    // Ao digitar novamente: limpar erro
     campo.addEventListener('input', () => {
         limparErroCampo(campo, erro)
     })
 }
 
-function mostrarErroCampo(campo: HTMLElement, erro: HTMLParagraphElement, mensagem: string): void {
+function mostrarErroCampo(
+    campo: HTMLElement,
+    erro: HTMLParagraphElement,
+    mensagem: string
+): void {
+
     campo.classList.add('input-erro')
     erro.textContent = mensagem
     erro.classList.add('ativo')
 }
 
-function limparErroCampo(campo: HTMLElement, erro: HTMLParagraphElement): void {
+function limparErroCampo(
+    campo: HTMLElement,
+    erro: HTMLParagraphElement
+): void {
+
     campo.classList.remove('input-erro')
     erro.textContent = ''
     erro.classList.remove('ativo')
 }
 
-async function processarSubmissao(formulario: HTMLFormElement, validarCep: () => Promise<void>, candidatoEmEdicao?: Candidato): Promise<void> {
+async function processarSubmissao(
+    formulario: HTMLFormElement,
+    validarCep: () => Promise<void>,
+    candidatoEmEdicao?: Candidato
+): Promise<void> {
+
     const mensagem = document.querySelector<HTMLParagraphElement>('#mensagem')
     const selectPais = document.querySelector<HTMLSelectElement>('#pais')
 
@@ -268,70 +442,281 @@ async function processarSubmissao(formulario: HTMLFormElement, validarCep: () =>
 
     try {
         await validarCep()
+
         const candidato = extrairEValidarDados(formulario, selectPais)
+        const emEdicao = candidatoEmEdicao !== undefined
 
-        const url = candidatoEmEdicao
-            ? 'http://localhost:8080/api/candidatos'
-            : 'http://localhost:8081/api/candidatos'
+        // Separa os dados cadastrais das competências.
+        const { competencias, ...dadosSemCompetencias } = candidato
 
-        const { competencias: _competencias, ...dadosSemCompetencias } = candidato;
-
-        const resposta = await fetch(url, {
-            method: candidatoEmEdicao ? 'PUT' : 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(dadosSemCompetencias)
-        });
-
-        if (resposta.status === (candidatoEmEdicao ? 200 : 201)) {
-            if (candidatoEmEdicao) {
-                localStorage.setItem('usuarioLogado', JSON.stringify(candidato))
-                window.dispatchEvent(new Event('auth-change'))
-                const { renderPerfilCandidato } = await import('../view/PerfilCandidato.ts')
-                await renderPerfilCandidato(candidato)
-                mostrarNotificacaoSucesso('Usuário editado com sucesso!')
-            } else {
-                const cpfLimpo = candidato.cpf.replace(/\D/g, '')
-
-                const respostaCompetencias = await fetch(
-                    `http://localhost:8082/api/candidatos/${encodeURIComponent(cpfLimpo)}/competencias`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            competencias: candidato.competencias
-                        })
-                    }
-                )
-
-                if (!respostaCompetencias.ok) {
-                    exibirMensagem(
-                        mensagem,
-                        'Candidato cadastrado, mas não foi possível associar as competências.',
-                        'mensagem-erro'
-                    )
-                    return
-                }
-
-                exibirMensagem(mensagem, 'Candidato cadastrado com sucesso!', 'mensagem-sucesso')
-                formulario.reset()
+        // Persiste os dados cadastrais exclusivamente no MS-Núcleo.
+        const resposta = await fetch(
+            `${URL_MS_NUCLEO}/api/candidatos`,
+            {
+                method: emEdicao ? 'PUT' : 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(dadosSemCompetencias)
             }
+        )
+
+        if (!resposta.ok) {
+            throw new Error(
+                await obterMensagemErro(
+                    resposta,
+                    'Não foi possível salvar os dados do candidato no MS-Núcleo.'
+                )
+            )
+        }
+
+        // Persiste e sincroniza as competências exclusivamente no MS-Competências.
+        try {
+            await sincronizarCompetenciasCandidato(
+                candidato.cpf,
+                competencias
+            )
+
+        } catch (erroCompetencias) {
+            const detalhe = erroCompetencias instanceof Error
+                ? erroCompetencias.message
+                : 'Erro desconhecido ao sincronizar competências.'
+
+            throw new Error(
+                `${emEdicao
+                    ? 'Dados cadastrais atualizados'
+                    : 'Candidato cadastrado'} no MS-Núcleo, mas houve uma falha ao salvar as competências no MS-Competências: ${detalhe}`
+            )
+        }
+
+        if (emEdicao) {
+            // Atualiza a sessão somente depois que os dois serviços responderem corretamente.
+            localStorage.setItem(
+                'usuarioLogado',
+                JSON.stringify(candidato)
+            )
+
+            window.dispatchEvent(new Event('auth-change'))
+
+            const { renderPerfilCandidato } =
+                await import('../view/PerfilCandidato.ts')
+
+            await renderPerfilCandidato(candidato)
+
+            mostrarNotificacaoSucesso(
+                'Perfil e competências atualizados com sucesso!'
+            )
+
         } else {
-            const erroBackend = await resposta.json();
-            exibirMensagem(mensagem, "Erro: " + (erroBackend.mensagem || "Dados inválidos."), 'mensagem-erro')
+            exibirMensagem(
+                mensagem,
+                'Candidato cadastrado com sucesso!',
+                'mensagem-sucesso'
+            )
+
+            formulario.reset()
         }
 
     } catch (erro) {
-        console.error('Erro ao cadastrar candidato:', erro)
-        const textoErro = erro instanceof Error ? erro.message : 'Servidor indisponível. Verifique se o Tomcat está rodando.'
-        exibirMensagem(mensagem, textoErro, 'mensagem-erro')
+        console.error('Erro ao salvar candidato:', erro)
+
+        const textoErro = erro instanceof Error
+            ? erro.message
+            : 'Servidor indisponível. Verifique se os microsserviços estão em execução.'
+
+        exibirMensagem(
+            mensagem,
+            textoErro,
+            'mensagem-erro'
+        )
     }
 }
 
-function extrairEValidarDados(formulario: HTMLFormElement, selectPais: HTMLSelectElement | null): Candidato {
+async function buscarCompetenciasCandidato(
+    cpf: string
+): Promise<string[]> {
+
+    const cpfLimpo = cpf.replace(/\D/g, '')
+
+    if (!/^\d{11}$/.test(cpfLimpo)) {
+        throw new Error('CPF inválido para consultar competências.')
+    }
+
+    const resposta = await fetch(
+        `${URL_MS_COMPETENCIAS}/api/candidatos/${encodeURIComponent(cpfLimpo)}/competencias`
+    )
+
+    if (!resposta.ok) {
+        throw new Error(
+            await obterMensagemErro(
+                resposta,
+                'Não foi possível consultar as competências no MS-Competências.'
+            )
+        )
+    }
+
+    const resultado: unknown = await resposta.json()
+
+    let competencias: CompetenciaAssociada[] = []
+
+    if (Array.isArray(resultado)) {
+        competencias = resultado as CompetenciaAssociada[]
+
+    } else if (
+        typeof resultado === 'object' &&
+        resultado !== null &&
+        'dados' in resultado &&
+        Array.isArray(resultado.dados)
+    ) {
+        competencias = resultado.dados as CompetenciaAssociada[]
+    }
+
+    return competencias.map(competencia => competencia.nome)
+}
+
+async function sincronizarCompetenciasCandidato(
+    cpf: string,
+    competenciasDesejadas: string[]
+): Promise<void> {
+
+    const cpfLimpo = cpf.replace(/\D/g, '')
+
+    if (!/^\d{11}$/.test(cpfLimpo)) {
+        throw new Error('CPF inválido para sincronizar as competências.')
+    }
+
+    const urlAssociacoes =
+        `${URL_MS_COMPETENCIAS}/api/candidatos/${encodeURIComponent(cpfLimpo)}/competencias`
+
+    // Consulta os vínculos atuais no MS-Competências.
+    const respostaConsulta = await fetch(urlAssociacoes)
+
+    if (!respostaConsulta.ok) {
+        throw new Error(
+            await obterMensagemErro(
+                respostaConsulta,
+                'Não foi possível consultar as competências atuais.'
+            )
+        )
+    }
+
+    const resultadoConsulta: unknown = await respostaConsulta.json()
+
+    let competenciasAtuais: CompetenciaAssociada[] = []
+
+    if (Array.isArray(resultadoConsulta)) {
+        competenciasAtuais = resultadoConsulta as CompetenciaAssociada[]
+
+    } else if (
+        typeof resultadoConsulta === 'object' &&
+        resultadoConsulta !== null &&
+        'dados' in resultadoConsulta &&
+        Array.isArray(resultadoConsulta.dados)
+    ) {
+        competenciasAtuais = resultadoConsulta.dados as CompetenciaAssociada[]
+    }
+
+    const normalizar = (nome: string): string =>
+        nome.trim().toLocaleLowerCase('pt-BR')
+
+    // Elimina duplicidades informadas no formulário.
+    const mapaDesejadas = new Map<string, string>()
+
+    competenciasDesejadas.forEach(nome => {
+        const nomeLimpo = nome.trim()
+
+        if (nomeLimpo) {
+            mapaDesejadas.set(
+                normalizar(nomeLimpo),
+                nomeLimpo
+            )
+        }
+    })
+
+    const desejadasUnicas = Array.from(mapaDesejadas.values())
+
+    const nomesAtuais = new Set(
+        competenciasAtuais.map(
+            competencia => normalizar(competencia.nome)
+        )
+    )
+
+    const nomesDesejados = new Set(
+        desejadasUnicas.map(normalizar)
+    )
+
+    const competenciasParaAdicionar = desejadasUnicas.filter(
+        nome => !nomesAtuais.has(normalizar(nome))
+    )
+
+    const competenciasParaRemover = competenciasAtuais.filter(
+        competencia => !nomesDesejados.has(normalizar(competencia.nome))
+    )
+
+    // Adiciona somente as novas competências.
+    if (competenciasParaAdicionar.length > 0) {
+        const respostaAssociacao = await fetch(
+            urlAssociacoes,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    competencias: competenciasParaAdicionar
+                })
+            }
+        )
+
+        if (!respostaAssociacao.ok) {
+            throw new Error(
+                await obterMensagemErro(
+                    respostaAssociacao,
+                    'Não foi possível adicionar as novas competências.'
+                )
+            )
+        }
+    }
+
+    // Remove somente os vínculos retirados pelo usuário.
+    for (const competencia of competenciasParaRemover) {
+        const respostaRemocao = await fetch(
+            `${urlAssociacoes}/${competencia.idCompetencia}`,
+            {
+                method: 'DELETE'
+            }
+        )
+
+        if (!respostaRemocao.ok && respostaRemocao.status !== 404) {
+            throw new Error(
+                `Não foi possível remover a competência "${competencia.nome}".`
+            )
+        }
+    }
+}
+
+async function obterMensagemErro(
+    resposta: Response,
+    mensagemPadrao: string
+): Promise<string> {
+
+    try {
+        const resultado = await resposta.json()
+
+        return resultado.mensagem ||
+            resultado.message ||
+            mensagemPadrao
+
+    } catch {
+        return mensagemPadrao
+    }
+}
+
+function extrairEValidarDados(
+    formulario: HTMLFormElement,
+    selectPais: HTMLSelectElement | null
+): Candidato {
+
     const dados = new FormData(formulario)
 
     const nome = dados.get('nome') as string
@@ -347,7 +732,9 @@ function extrairEValidarDados(formulario: HTMLFormElement, selectPais: HTMLSelec
 
     if (competenciasStr.trim().includes(' ') && !competenciasStr.includes(',')) {
         if (competenciasStr.trim().split(/\s+/).length > 2) {
-            throw new Error('Por favor, separe as competências usando vírgulas (Ex: Java, Python, Groovy).')
+            throw new Error(
+                'Por favor, separe as competências usando vírgulas (Ex: Java, Python, Groovy).'
+            )
         }
     }
 
@@ -362,7 +749,10 @@ function extrairEValidarDados(formulario: HTMLFormElement, selectPais: HTMLSelec
     ValidarCandidato.validarPais(pais)
     ValidarCandidato.validarIdade(idade)
     ValidarCandidato.validarEstado(estado)
-    ValidarCandidato.validarCodigoPostal(codigoPostal, selectPais?.value ?? '')
+    ValidarCandidato.validarCodigoPostal(
+        codigoPostal,
+        selectPais?.value ?? ''
+    )
     ValidarCandidato.validarDescricao(descricao)
     ValidarCandidato.validarCompetencias(competencias)
 
@@ -373,7 +763,9 @@ function extrairEValidarDados(formulario: HTMLFormElement, selectPais: HTMLSelec
         nome,
         email,
         idade,
-        cpf: formulario.dataset.modoEdicao === 'true' ? cpf : cpfLimpo,
+        cpf: formulario.dataset.modoEdicao === 'true'
+            ? cpf
+            : cpfLimpo,
         pais,
         estado,
         cep: codigoPostalLimpo,
@@ -382,7 +774,12 @@ function extrairEValidarDados(formulario: HTMLFormElement, selectPais: HTMLSelec
     }
 }
 
-function exibirMensagem(elemento: HTMLParagraphElement | null, texto: string, classeCSS: string): void {
+function exibirMensagem(
+    elemento: HTMLParagraphElement | null,
+    texto: string,
+    classeCSS: string
+): void {
+
     if (elemento) {
         elemento.textContent = texto
         elemento.classList.add(classeCSS)
