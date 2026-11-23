@@ -153,27 +153,11 @@ export class CadastroVagasService {
             throw new Error('CNPJ da empresa inválido.')
         }
 
-        // Primeiro, recupera os vínculos de competências.
+        // Primeiro, recupera os vínculos de competências no MS-Competências.
         const competencias = await this.buscarCompetencias(id)
 
-        // Exclui a vaga no MS-Núcleo.
-        const respostaExclusao = await fetch(
-            `${this.URL_MS_NUCLEO}/api/vagas/${id}?cnpjEmpresa=${encodeURIComponent(cnpj)}`,
-            {
-                method: 'DELETE'
-            }
-        )
-
-        if (!respostaExclusao.ok) {
-            throw new Error(
-                await this.obterMensagemErro(
-                    respostaExclusao,
-                    'Não foi possível excluir a vaga.'
-                )
-            )
-        }
-
-        // Após excluir a vaga, remove os vínculos no MS-Competências.
+        // Remove os vínculos de competências no MS-Competências ANTES de excluir a vaga.
+        // Se falhar, a vaga não será excluída.
         const falhas: string[] = []
 
         for (const competencia of competencias) {
@@ -191,7 +175,24 @@ export class CadastroVagasService {
 
         if (falhas.length > 0) {
             throw new Error(
-                `A vaga foi excluída, mas não foi possível remover estes vínculos de competências: ${falhas.join(', ')}.`
+                `Não foi possível remover estes vínculos de competências: ${falhas.join(', ')}.`
+            )
+        }
+
+        // Somente após limpar os vínculos, exclui a vaga no MS-Núcleo.
+        const respostaExclusao = await fetch(
+            `${this.URL_MS_NUCLEO}/api/vagas/${id}?cnpjEmpresa=${encodeURIComponent(cnpj)}`,
+            {
+                method: 'DELETE'
+            }
+        )
+
+        if (!respostaExclusao.ok) {
+            throw new Error(
+                await this.obterMensagemErro(
+                    respostaExclusao,
+                    'Não foi possível excluir a vaga.'
+                )
             )
         }
     }
