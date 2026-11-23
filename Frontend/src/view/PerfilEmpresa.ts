@@ -368,7 +368,7 @@ async function buscarCompetenciasCandidatosEmLote(
 
         try {
             const resposta = await fetch(
-                `${API_NUCLEO}/api/integracao/competencias/candidatos/consulta-lote`,
+                `${API_COMPETENCIAS}/api/competencias/candidatos/consulta-lote`,
                 {
                     method: "POST",
                     headers: {
