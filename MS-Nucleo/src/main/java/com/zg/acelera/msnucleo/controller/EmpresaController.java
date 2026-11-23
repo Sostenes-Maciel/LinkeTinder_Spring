@@ -31,6 +31,17 @@ public class EmpresaController {
     ) {
     }
 
+    public record AtualizarEmpresaRequest(
+            String cnpj,
+            String nome,
+            String email,
+            String pais,
+            String estado,
+            String cep,
+            String descricao
+    ) {
+    }
+
     public record LoginEmpresaRequest(
             String email,
             String cnpj
@@ -71,20 +82,47 @@ public class EmpresaController {
                 ));
     }
 
+    @PutMapping
+    public ResponseEntity<?> atualizar(
+            @RequestBody AtualizarEmpresaRequest dados
+    ) {
+        try {
+            Empresa empresaAtualizada = empresaService.atualizar(
+                    dados.cnpj(),
+                    dados.nome(),
+                    dados.email(),
+                    dados.pais(),
+                    dados.estado(),
+                    dados.cep(),
+                    dados.descricao()
+            );
+
+            return ResponseEntity.ok(empresaAtualizada);
+
+        } catch (EntityNotFoundException erro) {
+            return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("mensagem", erro.getMessage()));
+
+        } catch (IllegalArgumentException erro) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of("mensagem", erro.getMessage()));
+        }
+    }
+
     @PostMapping("/login")
     public ResponseEntity<?> login(
             @RequestBody LoginEmpresaRequest dados
     ) {
         if (dados == null ||
                 dados.email() == null ||
-                dados.cnpj() == null) {
+                dados.cnpj() == null ||
+                dados.email().isBlank()) {
 
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of(
-                            "mensagem",
-                            "E-mail ou CNPJ incorretos."
-                    ));
+                    .body(Map.of("mensagem", "E-mail ou CNPJ incorretos."));
         }
 
         try {
@@ -93,10 +131,7 @@ public class EmpresaController {
             if (!empresa.getEmail().equalsIgnoreCase(dados.email().trim())) {
                 return ResponseEntity
                         .status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of(
-                                "mensagem",
-                                "E-mail ou CNPJ incorretos."
-                        ));
+                        .body(Map.of("mensagem", "E-mail ou CNPJ incorretos."));
             }
 
             return ResponseEntity.ok(
@@ -106,10 +141,7 @@ public class EmpresaController {
         } catch (IllegalArgumentException | EntityNotFoundException erro) {
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of(
-                            "mensagem",
-                            "E-mail ou CNPJ incorretos."
-                    ));
+                    .body(Map.of("mensagem", "E-mail ou CNPJ incorretos."));
         }
     }
 

@@ -32,6 +32,18 @@ public class CandidatoController {
     ) {
     }
 
+    public record AtualizarCandidatoRequest(
+            String cpf,
+            String nome,
+            String email,
+            String pais,
+            String estado,
+            String cep,
+            String descricao,
+            Integer idade
+    ) {
+    }
+
     public record LoginCandidatoRequest(
             String email,
             String cpf
@@ -73,20 +85,48 @@ public class CandidatoController {
                 ));
     }
 
+    @PutMapping
+    public ResponseEntity<?> atualizar(
+            @RequestBody AtualizarCandidatoRequest dados
+    ) {
+        try {
+            Candidato candidatoAtualizado = candidatoService.atualizar(
+                    dados.cpf(),
+                    dados.nome(),
+                    dados.email(),
+                    dados.pais(),
+                    dados.estado(),
+                    dados.cep(),
+                    dados.descricao(),
+                    dados.idade()
+            );
+
+            return ResponseEntity.ok(candidatoAtualizado);
+
+        } catch (EntityNotFoundException erro) {
+            return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("mensagem", erro.getMessage()));
+
+        } catch (IllegalArgumentException erro) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of("mensagem", erro.getMessage()));
+        }
+    }
+
     @PostMapping("/login")
     public ResponseEntity<?> login(
             @RequestBody LoginCandidatoRequest dados
     ) {
         if (dados == null ||
                 dados.email() == null ||
-                dados.cpf() == null) {
+                dados.cpf() == null ||
+                dados.email().isBlank()) {
 
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of(
-                            "mensagem",
-                            "E-mail ou CPF incorretos."
-                    ));
+                    .body(Map.of("mensagem", "E-mail ou CPF incorretos."));
         }
 
         try {
@@ -95,10 +135,7 @@ public class CandidatoController {
             if (!candidato.getEmail().equalsIgnoreCase(dados.email().trim())) {
                 return ResponseEntity
                         .status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of(
-                                "mensagem",
-                                "E-mail ou CPF incorretos."
-                        ));
+                        .body(Map.of("mensagem", "E-mail ou CPF incorretos."));
             }
 
             return ResponseEntity.ok(
@@ -108,10 +145,7 @@ public class CandidatoController {
         } catch (IllegalArgumentException | EntityNotFoundException erro) {
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of(
-                            "mensagem",
-                            "E-mail ou CPF incorretos."
-                    ));
+                    .body(Map.of("mensagem", "E-mail ou CPF incorretos."));
         }
     }
 

@@ -203,8 +203,6 @@ function configurarEventosFormulario(validarCep: () => Promise<void>, empresaEmE
         await processarSubmissao(formulario, validarCep, empresaEmEdicao)
     })
 
-    // Validação em tempo real: ao sair do campo (blur) e ao digitar (input)
-    // CEP, País e Estado são gerenciados pelo auto-completar dos Correios e biblioteca de países
     configurarValidacaoPorCampo('nome', (valor) => ValidarEmpresa.validarNome(valor))
     configurarValidacaoPorCampo('email', (valor) => ValidarEmpresa.validarEmail(valor))
     configurarValidacaoPorCampo('cnpj', (valor) => ValidarEmpresa.validarCnpj(valor))
@@ -221,7 +219,6 @@ function configurarValidacaoPorCampo(campoId: string, validar: (valor: string) =
 
     if (!campo || !erro) return
 
-    // Ao sair do campo: validar
     campo.addEventListener('blur', () => {
         limparErroCampo(campo, erro)
         try {
@@ -231,7 +228,6 @@ function configurarValidacaoPorCampo(campoId: string, validar: (valor: string) =
         }
     })
 
-    // Ao digitar novamente: limpar erro
     campo.addEventListener('input', () => {
         limparErroCampo(campo, erro)
     })
@@ -262,9 +258,7 @@ async function processarSubmissao(formulario: HTMLFormElement, validarCep: () =>
         await validarCep()
         const empresa = extrairEValidarDados(formulario, selectPais)
 
-        const url = empresaEmEdicao
-            ? 'http://localhost:8080/api/empresas'
-            : 'http://localhost:8081/api/empresas'
+        const url = 'http://localhost:8081/api/empresas'
 
         const resposta = await fetch(url, {
             method: empresaEmEdicao ? 'PUT' : 'POST',
