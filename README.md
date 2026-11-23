@@ -552,9 +552,7 @@ A evolução da arquitetura está registrada no histórico de commits do Git, co
 * **Independência dos bancos de dados;**
 * **Integração entre os serviços.**
 
-```sql
-CREATE DATABASE linketinder_nucleo;
-CREATE DATABASE linketinder_competencias;
+---
 
 👤 Autor
 
