@@ -443,6 +443,119 @@ Foi implementada validação com expressões regulares (Regex) em TypeScript nos
 
 ---
 
+# -- **Atualização Backend - Microservices Spring Boot**
+
+## -- **1. Arquitetura do projeto**
+
+O backend do Linketinder foi reorganizado em dois microsserviços independentes, cada um com seu próprio banco de dados PostgreSQL.
+
+- **MS-Núcleo (Porta 8081):** Candidatos, empresas, vagas, curtidas e matches.
+  * **Banco de dados:** `linketinder_nucleo`
+
+- **MS-Competências (Porta 8082):** Catálogo e associações de competências a candidatos, empresas e vagas.
+  * **Banco de dados:** `linketinder_competencias`
+
+A comunicação entre os microsserviços ocorre por APIs REST. O MS-Núcleo utiliza **Spring RestClient** para consumir operações disponibilizadas pelo MS-Competências.
+
+O frontend permanece como aplicação independente, responsável pela interface e comunicação com os serviços.
+
+---
+
+## -- **2. Tecnologias utilizadas**
+
+- **Java 21:** Linguagem dos microsserviços.
+- **Spring Boot 4.2.0:** Desenvolvimento das APIs REST.
+- **Spring Data JPA:** Persistência e acesso aos dados.
+- **Hibernate:** Mapeamento objeto-relacional.
+- **Spring RestClient:** Comunicação entre microsserviços.
+- **Gradle Wrapper 9.9.2:** Gerenciamento de dependências e build.
+- **PostgreSQL:** Banco de dados dos microsserviços.
+- **TypeScript:** Desenvolvimento do frontend.
+- **Vite:** Servidor de desenvolvimento do frontend.
+- **HTML e CSS:** Estrutura e estilização da interface.
+- **Chart.js:** Construção de gráficos.
+
+---
+
+## -- **3. Execução do projeto**
+
+### -- **Pré-requisitos**
+
+* Java 21.
+* PostgreSQL.
+* Node.js e npm.
+
+### -- **3.1. Preparar os bancos de dados**
+
+No PostgreSQL, crie os bancos utilizados pelas aplicações:
+
+```sql
+CREATE DATABASE linketinder_nucleo;
+CREATE DATABASE linketinder_competencias;
+```
+
+Configure a variável de ambiente `DB_PASSWORD` com a senha do usuário PostgreSQL:
+
+```bash
+export DB_PASSWORD='sua_senha'
+```
+
+O banco do MS-Competências utiliza `ddl-auto=none`, portanto seu esquema precisa estar previamente criado.
+
+### -- **3.2. Iniciar o MS-Núcleo**
+
+Dentro do diretório `MS-Nucleo/`, execute:
+
+```bash
+./gradlew bootRun
+```
+
+Aplicação disponível em `http://localhost:8081`.
+
+### -- **3.3. Iniciar o MS-Competências**
+
+Em outro terminal, dentro do diretório `MS-Competências/`, execute:
+
+```bash
+./gradlew bootRun
+```
+
+Aplicação disponível em `http://localhost:8082`.
+
+### -- **3.4. Iniciar o frontend**
+
+Dentro do diretório `Frontend/`, execute:
+
+```bash
+npm install
+npm run dev
+```
+
+A aplicação ficará disponível, normalmente, em `http://localhost:5173`.
+
+Para gerar o build de produção:
+
+```bash
+npm run build
+```
+
+* **Importante:** os dois microsserviços devem estar em execução simultaneamente para permitir a comunicação entre eles.
+
+---
+
+## -- **4. Evolução do projeto**
+
+A evolução da arquitetura está registrada no histórico de commits do Git, contemplando:
+
+* **Separação do backend em microsserviços;**
+* **Implementação das APIs;**
+* **Independência dos bancos de dados;**
+* **Integração entre os serviços.**
+
+```sql
+CREATE DATABASE linketinder_nucleo;
+CREATE DATABASE linketinder_competencias;
+
 👤 Autor
 
 Sóstenes Marques Maciel
