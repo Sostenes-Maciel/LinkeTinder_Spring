@@ -2,6 +2,7 @@ package com.zg.acelera.msnucleo.controller;
 
 import com.zg.acelera.msnucleo.model.Empresa;
 import com.zg.acelera.msnucleo.service.EmpresaService;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +28,12 @@ public class EmpresaController {
             String estado,
             String cep,
             String descricao
+    ) {
+    }
+
+    public record LoginEmpresaRequest(
+            String email,
+            String cnpj
     ) {
     }
 
@@ -62,6 +69,48 @@ public class EmpresaController {
                         "mensagem",
                         "Empresa cadastrada com sucesso."
                 ));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(
+            @RequestBody LoginEmpresaRequest dados
+    ) {
+        if (dados == null ||
+                dados.email() == null ||
+                dados.cnpj() == null) {
+
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of(
+                            "mensagem",
+                            "E-mail ou CNPJ incorretos."
+                    ));
+        }
+
+        try {
+            Empresa empresa = empresaService.buscarPorCnpj(dados.cnpj());
+
+            if (!empresa.getEmail().equalsIgnoreCase(dados.email().trim())) {
+                return ResponseEntity
+                        .status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of(
+                                "mensagem",
+                                "E-mail ou CNPJ incorretos."
+                        ));
+            }
+
+            return ResponseEntity.ok(
+                    Map.of("empresa", empresa)
+            );
+
+        } catch (IllegalArgumentException | EntityNotFoundException erro) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of(
+                            "mensagem",
+                            "E-mail ou CNPJ incorretos."
+                    ));
+        }
     }
 
     @DeleteMapping("/{cnpj}")

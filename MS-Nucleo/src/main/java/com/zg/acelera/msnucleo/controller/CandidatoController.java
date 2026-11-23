@@ -2,6 +2,7 @@ package com.zg.acelera.msnucleo.controller;
 
 import com.zg.acelera.msnucleo.model.Candidato;
 import com.zg.acelera.msnucleo.service.CandidatoService;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +29,12 @@ public class CandidatoController {
             String cep,
             String descricao,
             Integer idade
+    ) {
+    }
+
+    public record LoginCandidatoRequest(
+            String email,
+            String cpf
     ) {
     }
 
@@ -64,6 +71,48 @@ public class CandidatoController {
                         "mensagem",
                         "Candidato cadastrado com sucesso."
                 ));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(
+            @RequestBody LoginCandidatoRequest dados
+    ) {
+        if (dados == null ||
+                dados.email() == null ||
+                dados.cpf() == null) {
+
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of(
+                            "mensagem",
+                            "E-mail ou CPF incorretos."
+                    ));
+        }
+
+        try {
+            Candidato candidato = candidatoService.buscarPorCpf(dados.cpf());
+
+            if (!candidato.getEmail().equalsIgnoreCase(dados.email().trim())) {
+                return ResponseEntity
+                        .status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of(
+                                "mensagem",
+                                "E-mail ou CPF incorretos."
+                        ));
+            }
+
+            return ResponseEntity.ok(
+                    Map.of("candidato", candidato)
+            );
+
+        } catch (IllegalArgumentException | EntityNotFoundException erro) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of(
+                            "mensagem",
+                            "E-mail ou CPF incorretos."
+                    ));
+        }
     }
 
     @DeleteMapping("/{cpf}")
