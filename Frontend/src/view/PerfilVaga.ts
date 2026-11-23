@@ -1,120 +1,254 @@
-import type { Vaga } from "../model/Vaga.ts"
-
-type VagaDaApi = Omit<Vaga, 'competencias'> & {
-    competencias?: string[]
-    competencia?: string[]
+interface VagaApi {
+    idVaga: number
+    titulo: string
+    pais: string
+    estado: string
+    descricao: string
 }
 
-export async function renderPerfilVaga(vagaId: number, onVoltar?: () => void, temMatch: boolean = false): Promise<void> {
-    const app = document.querySelector<HTMLDivElement>('#app')
+interface CompetenciaApi {
+    idCompetencia?: number
+    nome?: string
+}
+
+interface VagaPerfil {
+    id: number
+    titulo: string
+    pais: string
+    estado: string
+    descricao: string
+    competencias: string[]
+}
+
+const API_NUCLEO = "http://localhost:8081"
+const API_COMPETENCIAS = "http://localhost:8082"
+
+export async function renderPerfilVaga(
+    vagaId: number,
+    onVoltar?: () => void,
+    temMatch: boolean = false,
+    nomeEmpresa?: string
+): Promise<void> {
+    const app = document.querySelector<HTMLDivElement>("#app")
     if (!app) return
 
-    app.innerHTML = '<section class="perfil-vaga"><p>Carregando vaga...</p></section>'
+    app.innerHTML = `
+        <section class="perfil-vaga">
+            <p>Carregando vaga...</p>
+        </section>
+    `
 
     try {
-        const resposta = await fetch(`http://localhost:8080/api/vagas?id=${encodeURIComponent(vagaId)}`)
+        const resposta = await fetch(
+            `${API_NUCLEO}/api/vagas/${encodeURIComponent(vagaId)}`
+        )
+
         if (resposta.status === 404) {
-            renderizarMensagem(app, 'Vaga não encontrada!', onVoltar)
+            renderizarMensagem(app, "Vaga não encontrada!", onVoltar)
             return
         }
+
         if (!resposta.ok) {
-            throw new Error(`Falha ao buscar vaga (${resposta.status}).`)
+            throw new Error(
+                `Falha ao buscar vaga (HTTP ${resposta.status}).`
+            )
         }
 
         const resultado: unknown = await resposta.json()
-        const vagaDaApi = extrairVagaDaApi(resultado)
-        if (!vagaDaApi) {
-            renderizarMensagem(app, 'Vaga não encontrada!', onVoltar)
+        const vagaApi = extrairVaga(resultado)
+
+        if (!vagaApi) {
+            renderizarMensagem(app, "Vaga não encontrada!", onVoltar)
             return
         }
 
-        const vaga: Vaga = {
-            ...vagaDaApi,
-            competencias: vagaDaApi.competencias ?? vagaDaApi.competencia ?? []
+        const competencias = await buscarCompetenciasVaga(vagaId)
+
+        const vaga: VagaPerfil = {
+            id: vagaApi.idVaga,
+            titulo: vagaApi.titulo,
+            pais: vagaApi.pais,
+            estado: vagaApi.estado,
+            descricao: vagaApi.descricao,
+            competencias
         }
 
-        renderizarPerfilVagaHTML(app, vaga, temMatch)
+        renderizarPerfilVagaHTML(
+            app,
+            vaga,
+            temMatch,
+            nomeEmpresa
+        )
+
         configurarEventoVoltar(onVoltar)
+
     } catch (erro) {
-        console.error('Erro ao buscar detalhes da vaga:', erro)
-        renderizarMensagem(app, 'Não foi possível carregar os detalhes da vaga.', onVoltar)
+        console.error("Erro ao buscar detalhes da vaga:", erro)
+
+        renderizarMensagem(
+            app,
+            "Não foi possível carregar os detalhes da vaga.",
+            onVoltar
+        )
     }
 }
 
-function extrairVagaDaApi(resultado: unknown): VagaDaApi | undefined {
-    if (typeof resultado !== 'object' || resultado === null) return undefined
+function extrairVaga(resultado: unknown): VagaApi | undefined {
+    if (typeof resultado !== "object" || resultado === null) {
+        return undefined
+    }
 
-    const dados = 'dados' in resultado ? resultado.dados : resultado
-    return validarVagaDaApi(dados) ? dados : undefined
+    const dados = "dados" in resultado
+        ? resultado.dados
+        : resultado
+
+    if (typeof dados !== "object" || dados === null) {
+        return undefined
+    }
+
+    if (
+        !("idVaga" in dados)
+        || !("titulo" in dados)
+        || !("pais" in dados)
+        || !("estado" in dados)
+        || !("descricao" in dados)
+    ) {
+        return undefined
+    }
+
+    const idVaga = Number(dados.idVaga)
+
+    if (!Number.isInteger(idVaga) || idVaga <= 0) {
+        return undefined
+    }
+
+    return {
+        idVaga,
+        titulo: String(dados.titulo),
+        pais: String(dados.pais ?? ""),
+        estado: String(dados.estado ?? ""),
+        descricao: String(dados.descricao ?? "")
+    }
 }
 
-function validarVagaDaApi(valor: unknown): valor is VagaDaApi {
-    return typeof valor === 'object'
-        && valor !== null
-        && 'id' in valor
-        && typeof valor.id === 'number'
-        && 'titulo' in valor
-        && typeof valor.titulo === 'string'
-        && 'pais' in valor
-        && typeof valor.pais === 'string'
-        && 'estado' in valor
-        && typeof valor.estado === 'string'
-        && 'descricao' in valor
-        && typeof valor.descricao === 'string'
-        && 'empresa' in valor
-        && typeof valor.empresa === 'object'
-        && valor.empresa !== null
+async function buscarCompetenciasVaga(
+    idVaga: number
+): Promise<string[]> {
+    try {
+        const resposta = await fetch(
+            `${API_COMPETENCIAS}/api/vagas/${encodeURIComponent(idVaga)}/competencias`
+        )
+
+        if (!resposta.ok) {
+            throw new Error(
+                `Falha ao buscar competências da vaga (HTTP ${resposta.status}).`
+            )
+        }
+
+        const resultado: unknown = await resposta.json()
+        const competencias = extrairLista<CompetenciaApi>(resultado)
+
+        if (!competencias) {
+            return []
+        }
+
+        return competencias
+            .map(competencia => competencia.nome?.trim() ?? "")
+            .filter(nome => nome.length > 0)
+
+    } catch (erro) {
+        console.error(
+            "Erro ao buscar competências da vaga:",
+            erro
+        )
+
+        return []
+    }
 }
 
-function renderizarMensagem(app: HTMLDivElement, mensagem: string, onVoltar?: () => void): void {
+function extrairLista<T>(resultado: unknown): T[] | undefined {
+    if (Array.isArray(resultado)) {
+        return resultado as T[]
+    }
+
+    if (typeof resultado !== "object" || resultado === null) {
+        return undefined
+    }
+
+    if ("dados" in resultado && Array.isArray(resultado.dados)) {
+        return resultado.dados as T[]
+    }
+
+    return undefined
+}
+
+function renderizarMensagem(
+    app: HTMLDivElement,
+    mensagem: string,
+    onVoltar?: () => void
+): void {
     app.innerHTML = `
         <section class="perfil-vaga tela-com-transicao">
-            <h2>${mensagem}</h2>
+            <h2>${escaparHtml(mensagem)}</h2>
             <button id="btn-voltar-lista">Voltar para vagas</button>
         </section>
     `
+
     configurarEventoVoltar(onVoltar)
 }
 
-function renderizarPerfilVagaHTML(app: HTMLDivElement, vaga: Vaga, temMatch: boolean): void {
-    const competenciasTexto = vaga.competencias?.join(', ') || 'Nenhuma competência especificada'
-    const nomeEmpresa = temMatch && vaga.empresa?.nome
-        ? escaparHtml(vaga.empresa.nome)
-        : 'Match necessário para visualização'
+function renderizarPerfilVagaHTML(
+    app: HTMLDivElement,
+    vaga: VagaPerfil,
+    temMatch: boolean,
+    nomeEmpresa?: string
+): void {
+    const competenciasTexto = vaga.competencias.length > 0
+        ? vaga.competencias.map(escaparHtml).join(", ")
+        : "Nenhuma competência especificada"
+
+    const nomeEmpresaExibido = temMatch
+        ? nomeEmpresa?.trim()
+            ? escaparHtml(nomeEmpresa)
+            : "Match confirmado"
+        : "Match necessário para visualização"
 
     app.innerHTML = `
         <section class="perfil-vaga tela-com-transicao">
             <h1>Detalhes da Vaga</h1>
-            
+
             <div class="card-vaga">
-                <h2>${vaga.titulo}</h2>
+                <h2>${escaparHtml(vaga.titulo)}</h2>
+
                 <hr>
-                
+
                 <h3>Informações da Vaga</h3>
+
                 <p>
                     <strong>Descrição:</strong>
-                    ${vaga.descricao}
+                    ${escaparHtml(vaga.descricao)}
                 </p>
-                
+
                 <p>
                     <strong>Local:</strong>
-                    ${vaga.pais} - ${vaga.estado}
+                    ${escaparHtml(vaga.pais)} - ${escaparHtml(vaga.estado)}
                 </p>
-                
+
                 <p>
                     <strong>Competências:</strong>
                     ${competenciasTexto}
                 </p>
-                
+
                 <hr>
-                
+
                 <h3>Informações da Empresa</h3>
+
                 <p>
                     <strong>Empresa:</strong>
-                    ${nomeEmpresa}
+                    ${nomeEmpresaExibido}
                 </p>
             </div>
-            
+
             <button id="btn-voltar-lista">Voltar para Vagas</button>
         </section>
     `
@@ -122,12 +256,20 @@ function renderizarPerfilVagaHTML(app: HTMLDivElement, vaga: Vaga, temMatch: boo
 
 function escaparHtml(valor: string): string {
     return valor.replace(/[&<>"']/g, caractere => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
     })[caractere]!)
 }
 
 function configurarEventoVoltar(onVoltar?: () => void): void {
-    document.querySelector('#btn-voltar-lista')?.addEventListener('click', () => {
-        onVoltar?.()
-    })
+    document
+        .querySelector("#btn-voltar-lista")
+        ?.addEventListener("click", () => {
+            onVoltar?.()
+        })
 }
+
+export default renderPerfilVaga

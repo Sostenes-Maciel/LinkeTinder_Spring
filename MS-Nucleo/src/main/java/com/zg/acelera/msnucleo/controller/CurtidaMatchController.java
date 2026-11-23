@@ -1,15 +1,19 @@
 package com.zg.acelera.msnucleo.controller;
 
-import com.zg.acelera.msnucleo.dto.CurtidaRequestDTO;
-import com.zg.acelera.msnucleo.dto.ResultadoCurtidaResponseDTO;
+import com.zg.acelera.msnucleo.model.Curtida;
 import com.zg.acelera.msnucleo.model.MatchVaga;
 import com.zg.acelera.msnucleo.service.CurtidaService;
 import com.zg.acelera.msnucleo.service.MatchVagaService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -27,24 +31,82 @@ public class CurtidaMatchController {
         this.matchVagaService = matchVagaService;
     }
 
-    @PostMapping("/curtidas")
-    public ResponseEntity<ResultadoCurtidaResponseDTO> registrarCurtida(
-            @RequestBody CurtidaRequestDTO dados
+    public record CurtidaRequest(
+            String autor,
+            String cpfCandidato,
+            String cnpjEmpresa,
+            Long idVaga
     ) {
+    }
 
+    public record ResultadoCurtidaResponse(
+            String mensagem,
+            boolean match,
+            Long idMatch
+    ) {
+    }
+
+    public record StatusMatchVagaResponse(
+            Long idVaga,
+            String status,
+            String nomeEmpresa
+    ) {
+    }
+
+    @GetMapping("/matches")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<StatusMatchVagaResponse>> listarStatusCurtidasCandidato(
+            @RequestParam String cpf
+    ) {
+        List<MatchVaga> matches = matchVagaService.listarPorCandidato(cpf);
+
+        Map<Long, MatchVaga> matchesPorVaga = new HashMap<>();
+
+        for (MatchVaga match : matches) {
+            matchesPorVaga.put(
+                    match.getVaga().getIdVaga(),
+                    match
+            );
+        }
+
+        List<Curtida> curtidas = curtidaService.listarPorCandidato(cpf);
+        List<StatusMatchVagaResponse> resposta = new ArrayList<>();
+
+        for (Curtida curtida : curtidas) {
+            if (curtida.getEmpresa() != null) {
+                continue;
+            }
+
+            Long idVaga = curtida.getVaga().getIdVaga();
+            MatchVaga match = matchesPorVaga.get(idVaga);
+
+            resposta.add(
+                    new StatusMatchVagaResponse(
+                            idVaga,
+                            match != null ? "match" : "curtido",
+                            match != null ? match.getEmpresa().getNome() : null
+                    )
+            );
+        }
+
+        return ResponseEntity.ok(resposta);
+    }
+
+    @PostMapping("/curtidas")
+    public ResponseEntity<ResultadoCurtidaResponse> registrarCurtida(
+            @RequestBody CurtidaRequest dados
+    ) {
         String autor = normalizarAutor(dados.autor());
 
         Optional<MatchVaga> match;
 
         if ("CANDIDATO".equals(autor)) {
-
             curtidaService.curtirVaga(
                     dados.cpfCandidato(),
                     dados.idVaga()
             );
 
         } else if ("EMPRESA".equals(autor)) {
-
             curtidaService.curtirCandidato(
                     dados.cnpjEmpresa(),
                     dados.cpfCandidato(),
@@ -62,14 +124,13 @@ public class CurtidaMatchController {
                 dados.idVaga()
         );
 
-        ResultadoCurtidaResponseDTO resposta =
-                new ResultadoCurtidaResponseDTO(
-                        match.isPresent()
-                                ? "Match encontrado com sucesso!"
-                                : "Curtida registrada com sucesso.",
-                        match.isPresent(),
-                        match.map(MatchVaga::getIdMatch).orElse(null)
-                );
+        ResultadoCurtidaResponse resposta = new ResultadoCurtidaResponse(
+                match.isPresent()
+                        ? "Match encontrado com sucesso!"
+                        : "Curtida registrada com sucesso.",
+                match.isPresent(),
+                match.map(MatchVaga::getIdMatch).orElse(null)
+        );
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -78,20 +139,17 @@ public class CurtidaMatchController {
 
     @DeleteMapping("/matches")
     public ResponseEntity<Void> removerCurtida(
-            @RequestBody CurtidaRequestDTO dados
+            @RequestBody CurtidaRequest dados
     ) {
-
         String autor = normalizarAutor(dados.autor());
 
         if ("CANDIDATO".equals(autor)) {
-
             curtidaService.removerCurtidaCandidato(
                     dados.cpfCandidato(),
                     dados.idVaga()
             );
 
         } else if ("EMPRESA".equals(autor)) {
-
             curtidaService.removerCurtidaEmpresa(
                     dados.cnpjEmpresa(),
                     dados.cpfCandidato(),
